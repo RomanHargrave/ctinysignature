@@ -1,0 +1,13 @@
+ldflags = -lm -ggdb3
+cflags = $ldflags
+
+rule cc
+   depfile = $out.d
+   command = gcc -Iinclude $cflags -MMD -MF $out.d -c $in -o $out
+
+rule ld
+   command = gcc $ldflags -o $out $in
+
+build bin/pattern.o: cc src/pattern.c
+build bin/engine/simple_sm.o: cc src/engine/simple_sm.c
+build bin/engine/simple_sm: ld bin/engine/simple_sm.o bin/pattern.o
