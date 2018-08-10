@@ -1,5 +1,5 @@
-ldflags = -lm -ggdb3
-cflags = $ldflags
+ldflags = -lm -g0
+cflags = $ldflags -O3 -mtune=native -march=native
 
 rule cc
    depfile = $out.d

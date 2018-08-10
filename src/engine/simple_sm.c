@@ -2,18 +2,18 @@
  * Simple state-machine matching engine
  */
 
-#include<ctinysignature/pattern.h>
+#include <ctinysignature/pattern.h>
 
-#include<stdbool.h>
-#include<stdint.h>
-#include<stdio.h>
-#include<stddef.h>
-#include<stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
 
-#include<sys/types.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 enum E_STEP_TYPE {
    T_HALT        = 0,
@@ -109,7 +109,6 @@ cts_ssm_compile (struct s_rule* p_inp)
          current->next = cts_ssm_new_step(T_ADVANCE);
          current = current->next;
 
-         current->type = T_ADVANCE;
          current->data = 0;
       }
 
@@ -178,42 +177,39 @@ cts_ssm_count_bytes (void* p_program)
 uint8_t
 cts_ssm_execute (void* p_program, uint8_t* p_candidate, size_t p_length_limit)
 {
-   struct s_match_step* step = (struct s_match_step*) p_program;
-
-   if (p_program == NULL)
-   {
-      return true;
-   }
-   else
-   if (p_length_limit == 0 && step->type != T_HALT)
+   if (p_program == NULL || p_candidate == NULL || p_length_limit == 0)
    {
       return false;
    }
    else
    {
-      uint8_t truth = 0;
+      struct s_match_step* current_step = (struct s_match_step*) p_program;
+      size_t read_count = 0;
+      while (read_count < p_length_limit) {
+         switch (current_step->type)
+         {
+            case T_MATCH_VALUE:
+               if (*(p_candidate + read_count) != current_step->data)
+               {
+                  return false;
+               }
+            case T_ADVANCE:
+               if (current_step->next == NULL)
+               {
+                  return false;
+               }
 
-      switch (step->type)
-      {
-         case T_MATCH_VALUE:
-            /*
-             * T_MATCH_VALUE should short-circuit on false conditions
-             */
-            if (*p_candidate == step->data)
-            {
-               return cts_ssm_execute(step->next, p_candidate + 1, p_length_limit - 1);
-            }
-            else
-            {
+               current_step = current_step->next;
+               ++read_count;
+               break;
+            case T_HALT:
+               return true;
+            default:
                return false;
-            }
-         case T_ADVANCE:
-            return cts_ssm_execute(step->next, p_candidate + 1, p_length_limit - 1);
-         case T_HALT:
-            return true;
-         default:
-            return false;
+         }
       }
+
+      return false; // never reached T_HALT
    }
 }
 
@@ -229,8 +225,6 @@ cts_ssm_search (void* p_program, uint8_t* p_candidate, size_t p_limit)
 
    size_t const exec_len = cts_ssm_count_bytes(step);
 
-   printf("program has execute read length of %lu bytes\n", exec_len);
-
    if (exec_len > p_limit)
    {
       return NULL;
@@ -245,32 +239,4 @@ cts_ssm_search (void* p_program, uint8_t* p_candidate, size_t p_limit)
    }
 
    return NULL;
-}
-
-// test with GTA core and current player struct pattern
-int
-main (void)
-{
-   struct s_rule* rule_wordlptr = cts_parse_rule("48 8B 05 ? ? ? ? 45 ? ? ? ? 48 8B 48 08 48 85 C9 74 07");
-   void* ssm_prog_worldptr = cts_ssm_compile(rule_wordlptr);
-   cts_ssm_dump_program(ssm_prog_worldptr);
-
-   // open gta coredump
-   struct stat gta_core_stat;
-   int fd_gta_core = open("test_core", O_RDONLY);
-   fstat(fd_gta_core, &gta_core_stat);
-   void* core_base_addr = mmap(NULL, gta_core_stat.st_size, PROT_READ, MAP_PRIVATE, fd_gta_core, 0);
-
-
-   printf("search pattern from %p\n", core_base_addr);
-   void* found_at = cts_ssm_search(ssm_prog_worldptr, core_base_addr, gta_core_stat.st_size);
-   printf("search complete, result = %p\n", found_at);
-
-   munmap(core_base_addr, gta_core_stat.st_size);
-
-   uintptr_t offset_from_base = found_at - core_base_addr;
-
-   printf("offset is 0x%X\n", offset_from_base);
-
-   return 0;
 }
