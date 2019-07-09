@@ -1,3 +1,10 @@
+/**
+ * Binary Pattern VM
+ * 'fs' opcode implementation
+ *
+ * (C) 2019 Roman Hargrave <roman@hargrave.info>
+ */
+
 #include "../vm_impl.h"
 
 OPCODE_IMPL_NEW(fs) {
@@ -13,5 +20,4 @@ OPCODE_IMPL_FREE(fs, op) {
 }
 
 OPCODE_IMPL_EXEC(fs, op, state) {
-
 }

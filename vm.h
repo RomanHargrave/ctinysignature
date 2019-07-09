@@ -19,7 +19,7 @@ struct vm_state;
    struct OPCODE(name) { uint16_t const id; fields ; }; \
    struct OPCODE(name) * OPCODE(name) ## _new(); \
    void OPCODE(name) ## _free(struct OPCODE(name) *); \
-   void OPCODE(name) ## _exec(struct OPCODE(name), struct vm_state *)
+   void OPCODE(name) ## _exec(struct OPCODE(name), struct vm_state *);
 
 #define opcode_new(name) OPCODE(name) ## _new()
 #define opcode_free(name, ptr) OPCODE(name) ## _free(ptr)
@@ -281,7 +281,54 @@ OPCODE_DEF(0xF012, jmp,
       uint64_t imm;
 )
 
+enum vm_disposition {
+   /**
+    * The initial state of the VM
+    */
+   VM_DISPOSITION_INITIAL   = 0,
+
+   /**
+    * State that the VM is in when executing instructions
+    */
+   VM_DISPOSITION_EXECUTE   = 1,
+
+   /**
+    * State that the VM is placed in to by a yield instruction.
+    * The VM will halt and return a result to the caller.
+    */
+   VM_DISPOSITION_YIELD     = 2,
+
+   /**
+    * State that the VM is placed in to when a VM-level error occurs.
+    * The VM will halt and return an error code to the caller.
+    */
+   VM_DISPOSITION_ERROR     = 3,
+
+   /**
+    * State that the VM is placed in to when it has exhausted the program buffer
+    * without evaluating a yield instruction.
+    * The VM will halt and return an empty result to the caller.
+    */
+   VM_DISPOSITION_EXHAUSTED = 4,
+
+   /**
+    * State that the VM is placed in to by a breakpoint or pause instruction.
+    */
+   VM_DISPOSITION_HALT      = 5,
+
+   VM_DISPOSITION_MAX
+};
+
 struct vm_state {
+   /**
+    * The VM disposition is used to signal execution state changes to the
+    * VM execution thread.
+    */
+   enum vm_disposition disposition;
+
+   uint64_t result;
+   uint64_t error;
+
    uint8_t* input;
    uint8_t* input_tip;
    uint64_t input_size;
@@ -329,6 +376,5 @@ inline uint64_t* vm_register(struct vm_state* state, uint8_t id) {
       return &state->reg[id];
    }
 }
-
 
 #endif
