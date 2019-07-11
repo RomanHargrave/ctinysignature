@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "../vm_impl.h"
 
 /**
@@ -15,4 +16,13 @@ OPCODE_IMPL_FREE(noop, op) {
 
 OPCODE_IMPL_EXEC(noop, op, state) {
    return;
+}
+
+OPCODE_IMPL_TOSTR(noop, op, buf, blen) {
+   // sure, could be statically replaced with '5'
+   return snprintf(buf, blen, "noop");
+}
+
+OPCODE_IMPL_STRERR(noop, op, data, buf, blen) {
+   return snprintf(buf, blen, "noop does not specify any errors.");
 }
